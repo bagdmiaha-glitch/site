@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Поиск человека на общем фото</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background-color: #ffffff;
+            color: #2d2d2d;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 24px 16px;
+            line-height: 1.5;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            text-align: center;
+            color: #1f1f1f;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background-color: #1f1f1f;
+            color: #ffffff;
+            padding: 14px 20px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            text-align: center;
+            width: 100%;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            user-select: none;
+        }
+
+        .upload-label:hover {
+            background-color: #3a3a3a;
+        }
+
+        .upload-label:active {
+            transform: scale(0.98);
+        }
+
+        .upload-label.secondary {
+            background-color: #ffffff;
+            color: #1f1f1f;
+            border: 2px solid #1f1f1f;
+        }
+
+        .upload-label.secondary:hover {
+            background-color: #f0f0f0;
+        }
+
+        .upload-label .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #888;
+            flex-shrink: 0;
+        }
+
+        .upload-label .status-dot.ready {
+            background-color: #00c853;
+        }
+
+        .upload-label .filename {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            font-weight: 400;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .status {
+            font-size: 0.95rem;
+            color: #555;
+            min-height: 1.5em;
+            text-align: center;
+            font-weight: 400;
+            width: 100%;
+        }
+
+        .status.loading {
+            color: #0066cc;
+        }
+
+        .status.error {
+            color: #c0392b;
+        }
+
+        .status.success {
+            color: #00a844;
+            font-weight: 500;
+        }
+
+        .canvas-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 8px;
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #f8f8f8;
+            min-height: 120px;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            width: 100%;
+            object-fit: contain;
+        }
+
+        .canvas-wrapper.hidden {
+            display: none;
+        }
+
+        .preview-thumb {
+            max-width: 120px;
+            max-height: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid #eaeaea;
+        }
+
+        .reference-preview {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            min-height: 0;
+        }
+
+        .disclaimer {
+            font-size: 0.85rem;
+            color: #777;
+            text-align: center;
+            border-top: 1px solid #eaeaea;
+            padding-top: 20px;
+            margin-top: 12px;
+            line-height: 1.6;
+            max-width: 480px;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .upload-label {
+                padding: 16px 20px;
+                font-size: 1.05rem;
+            }
+
+            .disclaimer {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Найти себя на общем фото</h1>
+
+        <div class="upload-section">
+            <label for="refInput" class="upload-label secondary" id="refLabel">
+                <span class="status-dot" id="refDot"></span>
+                <span id="refText">1. Ваше фото</span>
+            </label>
+            <input type="file" id="refInput" accept="image/*" />
+
+            <label for="groupInput" class="upload-label" id="groupLabel">
+                <span class="status-dot" id="groupDot"></span>
+                <span id="groupText">2. Общее фото</span>
+            </label>
+            <input type="file" id="groupInput" accept="image/*" />
+        </div>
+
+        <div class="status" id="status">Загрузка моделей...</div>
+
+        <div class="canvas-wrapper hidden" id="canvasWrapper">
+            <canvas id="resultCanvas"></canvas>
+        </div>
+
+        <div class="disclaimer">
+            Ваши фото обрабатываются только в вашем браузере и никуда не отправляются. Изображение не сохраняется.
+        </div>
+    </div>
+
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <!-- face-api.js -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+    <script>
+        (async function() {
+            'use strict';
+
+            // ---------- DOM ----------
+            const refInput = document.getElementById('refInput');
+            const groupInput = document.getElementById('groupInput');
+            const refLabel = document.getElementById('refLabel');
+            const groupLabel = document.getElementById('groupLabel');
+            const refDot = document.getElementById('refDot');
+            const groupDot = document.getElementById('groupDot');
+            const refText = document.getElementById('refText');
+            const groupText = document.getElementById('groupText');
+            const statusEl = document.getElementById('status');
+            const canvasWrapper = document.getElementById('canvasWrapper');
+            const canvas = document.getElementById('resultCanvas');
+
+            // ---------- Константы ----------
+            const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+            const MATCH_THRESHOLD = 0.55; // Порог косинусной дистанции (меньше = строже). 0.5-0.6 — разумно.
+
+            // ---------- Состояние ----------
+            let modelsLoaded = false;
+            let refFile = null;       // файл эталонного фото
+            let groupFile = null;     // файл общего фото
+            let refImageEl = null;    // загруженный Image эталона
+            let processing = false;
+
+            // ---------- Утилиты ----------
+            function setStatus(text, type = '') {
+                statusEl.textContent = text;
+                statusEl.className = 'status' + (type ? ' ' + type : '');
+            }
+
+            function fileToImage(file) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    const url = URL.createObjectURL(file);
+                    img.onload = () => {
+                        URL.revokeObjectURL(url);
+                        resolve(img);
+                    };
+                    img.onerror = (e) => {
+                        URL.revokeObjectURL(url);
+                        reject(e);
+                    };
+                    img.src = url;
+                });
+            }
+
+            // ---------- Загрузка моделей ----------
+            async function loadModels() {
+                try {
+                    setStatus('Загрузка моделей...', 'loading');
+                    await Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                    ]);
+                    modelsLoaded = true;
+                    setStatus('Модели загружены. Загрузите оба фото.');
+                    updateReadyState();
+                } catch (err) {
+                    console.error('Ошибка загрузки моделей:', err);
+                    setStatus('Ошибка загрузки моделей. Проверьте соединение и обновите страницу.', 'error');
+                }
+            }
+
+            // ---------- Обновление индикаторов кнопок ----------
+            function updateReadyState() {
+                if (refFile) {
+                    refDot.classList.add('ready');
+                    refText.textContent = '1. Ваше фото ✓';
+                } else {
+                    refDot.classList.remove('ready');
+                    refText.textContent = '1. Ваше фото';
+                }
+
+                if (groupFile) {
+                    groupDot.classList.add('ready');
+                    groupText.textContent = '2. Общее фото ✓';
+                } else {
+                    groupDot.classList.remove('ready');
+                    groupText.textContent = '2. Общее фото';
+                }
+            }
+
+            // ---------- Основная логика поиска ----------
+            async function processIfReady() {
+                if (!modelsLoaded) return;
+                if (!refFile || !groupFile) return;
+                if (processing) return;
+
+                processing = true;
+                setStatus('Распознаю лица...', 'loading');
+
+                try {
+                    // Загружаем обе картинки (если ещё не загружены)
+                    if (!refImageEl) {
+                        refImageEl = await fileToImage(refFile);
+                    }
+                    const groupImage = await fileToImage(groupFile);
+
+                    // Опции детектора
+                    const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
+
+                    // ---------- 1. Эталон: находим одно лицо и получаем дескриптор ----------
+                    const refDetection = await faceapi
+                        .detectSingleFace(refImageEl, detectorOptions)
+                        .withFaceLandmarks()
+                        .withFaceDescriptor();
+
+                    if (!refDetection) {
+                        setStatus('На вашем фото не найдено лицо. Попробуйте другое фото.', 'error');
+                        processing = false;
+                        return;
+                    }
+
+                    const refDescriptor = refDetection.descriptor;
+
+                    // ---------- 2. Общее фото: находим все лица с дескрипторами ----------
+                    const groupDetections = await faceapi
+                        .detectAllFaces(groupImage, detectorOptions)
+                        .withFaceLandmarks()
+                        .withFaceDescriptors();
+
+                    if (!groupDetections || groupDetections.length === 0) {
+                        setStatus('На общем фото не найдено лиц.', 'error');
+                        processing = false;
+                        return;
+                    }
+
+                    // ---------- 3. Сравниваем дескрипторы ----------
+                    // Косинусная дистанция: 0 = идентичны, ~1 = разные
+                    let bestMatch = null;
+                    let bestDistance = Infinity;
+
+                    for (const det of groupDetections) {
+                        const distance = faceapi.euclideanDistance(refDescriptor, det.descriptor);
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            bestMatch = det;
+                        }
+                    }
+
+                    // ---------- 4. Рисуем ----------
+                    canvas.width = groupImage.naturalWidth;
+                    canvas.height = groupImage.naturalHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(groupImage, 0, 0, canvas.width, canvas.height);
+                    canvasWrapper.classList.remove('hidden');
+
+                    // Полупрозрачно приглушаем всех остальных (опционально) — не будем, чтобы не усложнять
+
+                    const isMatch = bestDistance <= MATCH_THRESHOLD;
+
+                    if (isMatch) {
+                        const box = bestMatch.detection.box;
+                        drawBox(ctx, box.x, box.y, box.width, box.height, '#00c853', 'Найдено совпадение');
+                        setStatus(`Совпадение найдено! Расстояние: ${bestDistance.toFixed(3)}`, 'success');
+                    } else {
+                        // Покажем лучшего кандидата, но с другим цветом
+                        const box = bestMatch.detection.box;
+                        drawBox(ctx, box.x, box.y, box.width, box.height, '#ff9800',
+                            `Лучший кандидат (${bestDistance.toFixed(2)}) — не совпадение`);
+                        setStatus(`Совпадений не найдено. Лучшее расстояние: ${bestDistance.toFixed(3)} (порог ${MATCH_THRESHOLD})`, 'error');
+                    }
+
+                } catch (err) {
+                    console.error('Ошибка обработки:', err);
+                    setStatus('Ошибка при обработке изображений.', 'error');
+                } finally {
+                    processing = false;
+                }
+            }
+
+            // ---------- Отрисовка рамки с подписью ----------
+            function drawBox(ctx, x, y, w, h, color, label) {
+                const fontSize = Math.max(14, Math.round(canvas.width * 0.022));
+                const font = `600 ${fontSize}px system-ui, -apple-system, sans-serif`;
+                const padding = Math.round(fontSize * 0.5);
+                const textHeight = fontSize;
+
+                // Рамка
+                ctx.strokeStyle = color;
+                ctx.lineWidth = Math.max(2, Math.round(canvas.width * 0.004));
+                ctx.strokeRect(x, y, w, h);
+
+                // Подпись
+                ctx.font = font;
+                ctx.textBaseline = 'top';
+                const textWidth = ctx.measureText(label).width;
+
+                let labelX = x;
+                let labelY = y + h + padding;
+                if (labelY + textHeight + padding * 2 > canvas.height) {
+                    labelY = y + h - textHeight - padding * 2;
+                }
+                if (labelX + textWidth + padding * 2 > canvas.width) {
+                    labelX = canvas.width - textWidth - padding * 2;
+                }
+                if (labelX < 0) labelX = 0;
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                ctx.fillRect(labelX, labelY, textWidth + padding * 2, textHeight + padding * 2);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(label, labelX + padding, labelY + padding);
+            }
+
+            // ---------- Обработчики ----------
+            refInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (!file.type.startsWith('image/')) {
+                    setStatus('Выберите файл изображения.', 'error');
+                    return;
+                }
+                refFile = file;
+                refImageEl = null; // сбрасываем кэш
+                updateReadyState();
+                processIfReady();
+                refInput.value = '';
+            });
+
+            groupInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (!file.type.startsWith('image/')) {
+                    setStatus('Выберите файл изображения.', 'error');
+                    return;
+                }
+                groupFile = file;
+                updateReadyState();
+                processIfReady();
+                groupInput.value = '';
+            });
+
+            // ---------- Старт ----------
+            loadModels();
+
+        })();
+    </script>
+</body>
+</html>
+
